@@ -1,6 +1,7 @@
 import catchAsync from "../middlewares/catchAsync.js";
 import User from "../models/user.model.js";
 import ApiError from "../utils/ApiError.js";
+import { comparePasswords, generateToken } from "../utils/auth.js";
 
 export const signup = catchAsync(async (req, res, next) => {
   const { username, email, password, role } = req.body;
@@ -37,5 +38,47 @@ export const signup = catchAsync(async (req, res, next) => {
     success: true,
     data: userResponse,
     message: "User registered successfully",
+  });
+});
+
+
+export const signin = catchAsync(async (req, res, next) => {
+  const { email, password } = req.body;
+
+  // 1. Check if email and password exist
+  if (!email || !password) {
+    return next(new ApiError(400, 'Email and password are required'));
+  }
+
+  // 2. Find user by email (exclude sensitive fields)
+  const user = await User.findOne({ email }).select('+password');
+  if (!user) {
+    return next(new ApiError(401, 'Invalid credentials')); // Generic message for security
+  }
+
+  // 3. Compare passwords
+  const isPasswordValid = await comparePasswords(password, user.password);
+  if (!isPasswordValid) {
+    return next(new ApiError(401, 'Invalid credentials'));
+  }
+
+  // 4. Generate JWT token
+  const token = generateToken(user._id);
+
+  // 5. Remove password from response
+  user.password = undefined;
+
+  // 6. Send token via HTTP-only cookie (recommended for production)
+  res.cookie('token', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 24 * 60 * 60 * 1000, // 1 day
+  });
+
+  // 7. Send response
+  res.status(200).json({
+    success: true,
+    token, // Optional: Also send token in response (if needed for mobile apps)
+    data: user,
   });
 });
