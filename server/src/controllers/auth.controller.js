@@ -3,10 +3,10 @@ import User from "../models/user.model.js";
 import ApiError from "../utils/ApiError.js";
 
 export const signup = catchAsync(async (req, res, next) => {
-  const { name, email, password, role } = req.body;
+  const { username, email, password, role } = req.body;
 
   // Basic validation
-  if (!name || !email || !password) {
+  if (!username || !email || !password) {
     return next(new ApiError(400, "Name, email, and password are required"));
   }
 
@@ -18,7 +18,7 @@ export const signup = catchAsync(async (req, res, next) => {
 
   // Create user (password automatically hashed via `pre('save')` hook)
   const user = await User.create({
-    name,
+    username,
     email,
     password,
     role: role || "Traveler",
@@ -27,7 +27,7 @@ export const signup = catchAsync(async (req, res, next) => {
   // Never send password back
   const userResponse = {
     _id: user._id,
-    name: user.name,
+    username: user.username,
     email: user.email,
     role: user.role,
     createdAt: user.createdAt,
