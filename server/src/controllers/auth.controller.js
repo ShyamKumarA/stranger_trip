@@ -74,7 +74,7 @@ export const signin = catchAsync(async (req, res, next) => {
     // secure: process.env.NODE_ENV === 'production',
     maxAge: 24 * 60 * 60 * 1000, // 1 day
   });
-
+  
   // 7. Send response
   res.status(200).json({
     success: true,
