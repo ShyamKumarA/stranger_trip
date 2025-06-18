@@ -71,7 +71,7 @@ export const signin = catchAsync(async (req, res, next) => {
   // 6. Send token via HTTP-only cookie (recommended for production)
   res.cookie('token', token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    // secure: process.env.NODE_ENV === 'production',
     maxAge: 24 * 60 * 60 * 1000, // 1 day
   });
 
@@ -80,5 +80,54 @@ export const signin = catchAsync(async (req, res, next) => {
     success: true,
     token, // Optional: Also send token in response (if needed for mobile apps)
     data: user,
+  });
+});
+
+
+
+export const google = catchAsync(async (req, res, next) => {
+  const { email, name, photo } = req.body;
+
+  // 1. Check if user exists in DB
+  let user = await User.findOne({ email });
+
+  if (!user) {
+    // 2. If user doesn't exist, create a new one with a random password
+    const generatedPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8); // Random 16-char password
+    // const hashedPassword = await bcrypt.hash(generatedPassword, 12);
+
+    user = await User.create({
+      username: name.split(' ').join('').toLowerCase() + Math.random().toString(36).slice(-4), // Unique username
+      email,
+      password: generatedPassword, // Not needed for Google auth but required by schema
+      avatar: photo, // Save Google profile picture
+      provider: 'google', // Track auth provider
+    });
+  }
+
+  // 3. Generate JWT token
+  const token = generateToken(user._id);
+
+  // 4. Set HTTP-only cookie
+  res.cookie('token', token, {
+    httpOnly: true,
+    // secure: process.env.NODE_ENV === 'production',
+    maxAge: 24 * 60 * 60 * 1000, // 1 day
+  });
+
+  // 5. Send response (excluding sensitive data)
+  const userResponse = {
+    _id: user._id,
+    username: user.username,
+    email: user.email,
+    avatar: user.avatar,
+    role: user.role,
+    provider: user.provider,
+  };
+
+  res.status(200).json({
+    success: true,
+    token, // Optional: For clients that can't use cookies (e.g., mobile)
+    data: userResponse,
   });
 });
